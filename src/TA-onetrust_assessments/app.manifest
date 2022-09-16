@@ -4,7 +4,7 @@
     "title": "OneTrust Assessments",
     "id": {
       "group": null,
-      "name": "TA-onetrustsef",
+      "name": "TA-onetrust_assessments",
       "version": "1.0.0"
     },
     "author": [
