@@ -88,7 +88,7 @@ class OneTrustAssessments(Script):
         if _base_url[-1] == '/':
             _base_url = _base_url.rstrip(_base_url[-1])
 
-        url = f"{_base_url}/api/assessment/v2/assessments?assessmentArchivalState=ALL&size=2000page={_page}"
+        url = f"{_base_url}/api/assessment/v2/assessments?assessmentArchivalState=ALL&size=2000&page={_page}"
 
         headers = {
             "Accept": "application/json",
