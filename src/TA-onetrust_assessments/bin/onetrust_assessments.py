@@ -129,12 +129,10 @@ class OneTrustAssessments(Script):
         self.input_name, self.input_items = inputs.inputs.popitem()
         session_key = self._input_definition.metadata["session_key"]
 
+        inpname = self.input_items["input_name"]
         base_url = self.input_items["base_url"]
-        token_name = self.input_items["token_name"]
-        auth_token = self.input_items["auth_token"]
+        api_token = self.input_items["api_token"]
 
-        ew.log("INFO", f'Collecting BigID Audit Logs from: {str(base_url)}')
-        
         try:
             if auth_token != self.MASK:
                 self.encrypt_keys(token_name, auth_token, session_key)
@@ -143,63 +141,14 @@ class OneTrustAssessments(Script):
             decrypted = self.decrypt_keys(token_name, session_key)
             self.CREDENTIALS = json.loads(decrypted)
             auth_token = self.CREDENTIALS["authToken"]
-            
-            # Retrieve checkpoint 
-            checkpoint_hash = self.read_tail(ew)
-            ew.log("INFO", f'Checkpoint retrieved: {checkpoint_hash}.')
-            
-            ew.log("INFO", f'Refreshing token on {base_url} with token (secret) length: {str(len(auth_token))}')
-            r_rt = self.refresh_token(ew, base_url, auth_token)
-            
-            ew.log("INFO", 'Token refreshed. Now retrieving audit logs...')
-            r_al = self.get_audit_logs(ew, base_url, r_rt)
-            audit_dumps = r_al.text.splitlines()
-            total_audit_dumps = len(audit_dumps)
-            
-            ew.log("INFO", f'Audit logs retrieved. A total of {str(total_audit_dumps)} lines. Now working on checkpoint matching...')
-            index_to_start = -1
-            
-            if checkpoint_hash != self.CHECKPOINT_HEADER:
-                ew.log("INFO", f'Checkpoint is not empty. Starting with new events only. Searching audit dumps for a checkpoint match...')
-                for ad in audit_dumps:
-                    index_to_start = index_to_start + 1
-                    ad_line_hash = hashlib.sha256(ad.strip().encode())
-                    ad_line_hash = ad_line_hash.hexdigest()
-                    if checkpoint_hash == ad_line_hash: 
-                        ew.log("INFO", f'Checkpoint found. Starting at line: {str(index_to_start)}.')
-                        break
-                
-                ew.log("INFO", f'Checkpoint engine report: {str(index_to_start + 1)}/{total_audit_dumps}.')
 
-                if index_to_start == total_audit_dumps - 1:
-                    ew.log("INFO", f'No checkpoint found. All audit logs will be indexed.')
-                    index_to_start = -1
+        totalPages = self.get_assessment_list_total_pages(base_url, auth_token)
 
-            else:
-                ew.log("INFO", f'Checkpoint is empty. All audit logs will be indexed.')
-            
-            new_audit_logs = audit_dumps[index_to_start + 1:]
-            
-            for line in new_audit_logs:
-                auditLine = Event()
-                auditLine.stanza = self.input_name
-                auditLine.sourceType  = "bigid:audit"
-                auditLine.data = line
-                ew.write_event(auditLine)
-            
-            ew.log("INFO", f'Successfully indexed {str(len(new_audit_logs))} BigID audit logs.')
-            
-            # Create checkpoint 
-            new_checkpoint = new_audit_logs[len(new_audit_logs) - 1]
-            new_checkpoint_hash = hashlib.sha256(new_checkpoint.strip().encode())
-            new_checkpoint_hash = new_checkpoint_hash.hexdigest()
-            self.append_checkpoint(ew, new_checkpoint_hash, 'a+')
-            ew.log("INFO", f'Done writing/appending new checkpoint.')
-            
-            # Trim checkpoint file only half of the time
-            if random.random() < .5:
-                self.trim_checkpoint(ew, 3000)
-            
+        testing = Event()
+        testing.stanza = self.input_name
+        testing.sourceType  = "onetrust:totalPages"
+        testing.data = totalPages
+        ew.write_event(testing)
             
         except Exception as e:
             ew.log("ERROR", "Error streaming events: %s" % str(e))
