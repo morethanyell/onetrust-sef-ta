@@ -38,34 +38,34 @@ class OneTrustAssessments(Script):
     def validate_input(self, definition):
         pass
     
-    def encrypt_keys(self, _inpname, _api_token, _session_key):
+    def encrypt_keys(self, _base_url, _api_token, _session_key):
 
         args = {'token': _session_key}
         service = client.connect(**args)
 
-        credentials = {"inpName": _inpname, "apiToken": _api_token}
+        credentials = {"baseUrl": _base_url, "apiToken": _api_token}
 
         try:
             for storage_password in service.storage_passwords:
-                if storage_password.username == _inpname:
+                if storage_password.username == _base_url:
                     service.storage_passwords.delete(username=storage_password.username)
                     break
 
-            service.storage_passwords.create(json.dumps(credentials), _token_name)
+            service.storage_passwords.create(json.dumps(credentials), _base_url)
 
         except Exception as e:
             raise Exception("Error encrypting: %s" % str(e))
     
-    def decrypt_keys(self, _inpname, _api_token, _session_key):
+    def decrypt_keys(self, _base_url, _session_key):
 
         args = {'token': _session_key}
         service = client.connect(**args)
 
         for storage_password in service.storage_passwords:
-            if storage_password.username == _token_name:
+            if storage_password.username == _base_url:
                 return storage_password.content.clear_password
     
-    def mask_credentials(self, _input_name, _base_url, _api_token, _session_key):
+    def mask_credentials(self, _base_url, _api_token, _session_key):
 
         try:
             args = {"token": _session_key}
@@ -75,7 +75,6 @@ class OneTrustAssessments(Script):
             item = service.inputs.__getitem__((_input_name, kind))
 
             kwargs = {
-                "input_name": _input_name,
                 "base_url": _base_url,
                 "api_token": self.MASK
             }
@@ -121,14 +120,22 @@ class OneTrustAssessments(Script):
 
         base_url = self.input_items["base_url"]
         api_token = self.input_items["api_token"]
-        
-        totalPages = self.get_assessment_list_total_pages(base_url, api_token)
 
-        testing = Event()
-        testing.stanza = self.input_name
-        testing.sourceType  = "onetrust:totalPages"
-        testing.data = f"Total pages: {str(totalPages)}"
-        ew.write_event(testing)
+        try:
+            if auth_token != self.MASK:
+                self.encrypt_keys(token_name, auth_token, session_key)
+                self.mask_credentials(base_url, token_name, self.input_name, session_key)
+
+            totalPages = self.get_assessment_list_total_pages(base_url, api_token)
+            
+            testing = Event()
+            testing.stanza = self.input_name
+            testing.sourceType  = "onetrust:totalPages"
+            testing.data = f"Total pages: {str(totalPages)}"
+            ew.write_event(testing)
+
+        except Exception as e:
+            ew.log("ERROR", "Error streaming events: %s" % str(e))
             
 
 if __name__ == "__main__":
