@@ -127,7 +127,7 @@ class OneTrustAssessments(Script):
         testing = Event()
         testing.stanza = self.input_name
         testing.sourceType  = "onetrust:totalPages"
-        testing.data = totalPages
+        testing.data = f"Total pages: {str(totalPages)}"
         ew.write_event(testing)
             
 
