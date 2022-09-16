@@ -66,7 +66,7 @@ class OneTrustAssessments(Script):
         except Exception as e:
             raise Exception("Error encrypting: %s" % str(e))
     
-    def decrypt_keys(self, _api_token, _session_key):
+    def decrypt_keys(self, _input_name, _api_token, _session_key):
 
         args = {'token': _session_key}
         service = client.connect(**args)
@@ -75,16 +75,17 @@ class OneTrustAssessments(Script):
             if storage_password.username == _token_name:
                 return storage_password.content.clear_password
     
-    def mask_credentials(self, _base_url, api_token, _input_name, _session_key):
+    def mask_credentials(self, _input_name, _base_url, _api_token, _session_key):
 
         try:
-            args = {'token': _session_key}
+            args = {"token": _session_key}
             service = client.connect(**args)
 
             kind, _input_name = _input_name.split("://")
             item = service.inputs.__getitem__((_input_name, kind))
 
             kwargs = {
+                "input_name": _input_name,
                 "base_url": _base_url,
                 "api_token": self.MASK
             }
