@@ -10,22 +10,12 @@ import splunklib.client as client
 class OneTrustAssessments(Script):
     
     MASK = "***ENCRYPTED***"
-    CREDENTIALS = None
-    # CHECKPOINT_FILE_PATH = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'tmp', 'CHECKPOINT'))
     
     def get_scheme(self):
         scheme = Scheme("OneTrust Assessments")
         scheme.use_external_validation = False
         scheme.use_single_instance = False
         scheme.description = "OneTrust Assessments Token Credentials"
-
-        input_name = Argument("input_name")
-        input_name.title = "Name"
-        input_name.data_type = Argument.data_type_string
-        input_name.description = "Give a name to this input, without spaces"
-        input_name.required_on_create = True
-        input_name.required_on_edit = False
-        scheme.add_argument(input_name)
 
         base_url = Argument("base_url")
         base_url.title = "URL"
@@ -48,16 +38,16 @@ class OneTrustAssessments(Script):
     def validate_input(self, definition):
         pass
     
-    def encrypt_keys(self, _input_name, _api_token, _session_key):
+    def encrypt_keys(self, _inpname, _api_token, _session_key):
 
         args = {'token': _session_key}
         service = client.connect(**args)
 
-        credentials = {"inputName": _input_name, "apiToken": _api_token}
+        credentials = {"inpName": _inpname, "apiToken": _api_token}
 
         try:
             for storage_password in service.storage_passwords:
-                if storage_password.username == _input_name:
+                if storage_password.username == _inpname:
                     service.storage_passwords.delete(username=storage_password.username)
                     break
 
@@ -66,7 +56,7 @@ class OneTrustAssessments(Script):
         except Exception as e:
             raise Exception("Error encrypting: %s" % str(e))
     
-    def decrypt_keys(self, _input_name, _api_token, _session_key):
+    def decrypt_keys(self, _inpname, _api_token, _session_key):
 
         args = {'token': _session_key}
         service = client.connect(**args)
@@ -125,33 +115,20 @@ class OneTrustAssessments(Script):
         pass
     
     def stream_events(self, inputs, ew):
-        
+
         self.input_name, self.input_items = inputs.inputs.popitem()
         session_key = self._input_definition.metadata["session_key"]
 
-        inpname = self.input_items["input_name"]
         base_url = self.input_items["base_url"]
         api_token = self.input_items["api_token"]
-
-        try:
-            if auth_token != self.MASK:
-                self.encrypt_keys(token_name, auth_token, session_key)
-                self.mask_credentials(base_url, token_name, self.input_name, session_key)
-            
-            decrypted = self.decrypt_keys(token_name, session_key)
-            self.CREDENTIALS = json.loads(decrypted)
-            auth_token = self.CREDENTIALS["authToken"]
-
-        totalPages = self.get_assessment_list_total_pages(base_url, auth_token)
+        
+        totalPages = self.get_assessment_list_total_pages(base_url, api_token)
 
         testing = Event()
         testing.stanza = self.input_name
         testing.sourceType  = "onetrust:totalPages"
         testing.data = totalPages
         ew.write_event(testing)
-            
-        except Exception as e:
-            ew.log("ERROR", "Error streaming events: %s" % str(e))
             
 
 if __name__ == "__main__":
