@@ -65,7 +65,7 @@ class OneTrustAssessments(Script):
             if storage_password.username == _base_url:
                 return storage_password.content.clear_password
     
-    def mask_credentials(self, _base_url, _api_token, _session_key):
+    def mask_credentials(self, _base_url, _api_token, _input_name, _session_key):
 
         try:
             args = {"token": _session_key}
@@ -84,12 +84,11 @@ class OneTrustAssessments(Script):
         except Exception as e:
             raise Exception("Error updating inputs.conf: %s" % str(e))
     
-    def get_assessment_list_total_pages(self, _base_url, _api_token):
-
+    def get_assessment_list(self, ew, _base_url, _api_token, _page):
         if _base_url[-1] == '/':
             _base_url = _base_url.rstrip(_base_url[-1])
 
-        url = f"{_base_url}/api/assessment/v2/assessments?assessmentArchivalState=ALL&size=2000"
+        url = f"{_base_url}/api/assessment/v2/assessments?assessmentArchivalState=ALL&size=2000page={_page}"
 
         headers = {
             "Accept": "application/json",
@@ -97,22 +96,17 @@ class OneTrustAssessments(Script):
             "Authorization": f"Bearer {_api_token}"
         }
 
-        totalPages = 0
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code != 200:
+                ew.log("ERROR", f"request_status_code={str(response.status_code)}. Failed to get total number of pages from {base_url}.")
+                sys.exit(1)
+            
+            return response.json()
+        except Exception as e:
+            ew.log("ERROR", "Error streaming events: %s" % str(e))
+            sys.exit(1)
 
-        response = requests.get(url, headers=headers)
-
-        if response.status_code != 200:
-            ew.log("ERROR", f'Failed to get total number of pages from {base_url}.')
-
-        if "page" in response.json():
-            if "totalPages" in response.json()["page"]:
-                totalPages = response.json()["page"]["totalPages"]
-
-        return totalPages
-
-    def get_assessment_list():
-        pass
-    
     def stream_events(self, inputs, ew):
 
         self.input_name, self.input_items = inputs.inputs.popitem()
@@ -122,17 +116,32 @@ class OneTrustAssessments(Script):
         api_token = self.input_items["api_token"]
 
         try:
-            if auth_token != self.MASK:
-                self.encrypt_keys(token_name, auth_token, session_key)
-                self.mask_credentials(base_url, token_name, self.input_name, session_key)
+            if api_token != self.MASK:
+                self.encrypt_keys(base_url, api_token, session_key)
+                self.mask_credentials(base_url, api_token, self.input_name, session_key)
 
-            totalPages = self.get_assessment_list_total_pages(base_url, api_token)
-            
-            testing = Event()
-            testing.stanza = self.input_name
-            testing.sourceType  = "onetrust:totalPages"
-            testing.data = f"Total pages: {str(totalPages)}"
-            ew.write_event(testing)
+            decrypted = self.decrypt_keys(base_url, session_key)
+            self.CREDENTIALS = json.loads(decrypted)
+            api_token = self.CREDENTIALS["apiToken"]
+
+            # Assumed there at least 1 page
+            assessment_ids_pages = 1
+            page_flipper = 0
+
+            while page_flipper < assessment_ids_pages:
+
+                assessment_ids = self.get_assessment_list(ew, base_url, api_token, page_flipper)
+
+                if "page" in assessment_ids:
+                    if "totalPages" in assessment_ids["page"]:
+                        assessment_ids_pages = assessment_ids["page"]["totalPages"]
+
+                for assessment in assessment_ids["content"]:
+                    asId = Event()
+                    asId.stanza = self.input_name
+                    asId.sourceType  = "onetrust:assessmentId"
+                    asId.data = json.dumps(assessment)
+                    ew.write_event(asId)
 
         except Exception as e:
             ew.log("ERROR", "Error streaming events: %s" % str(e))
