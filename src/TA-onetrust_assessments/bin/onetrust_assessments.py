@@ -3,7 +3,7 @@ import os
 import sys
 import requests
 import hashlib
-import random
+import socket
 from splunklib.modularinput import *
 import splunklib.client as client
 
@@ -90,6 +90,8 @@ class OneTrustAssessments(Script):
 
         url = f"{_base_url}/api/assessment/v2/assessments?assessmentArchivalState=ALL&size=2000&page={_page}"
 
+        ew.log("INFO", f"Performing API get request on {url}")
+
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -127,21 +129,29 @@ class OneTrustAssessments(Script):
             # Assumed there at least 1 page
             assessment_ids_pages = 1
             page_flipper = 0
+            apiScriptHost = socket.gethostname()
 
             while page_flipper < assessment_ids_pages:
 
                 assessment_ids = self.get_assessment_list(ew, base_url, api_token, page_flipper)
 
-                if "page" in assessment_ids:
-                    if "totalPages" in assessment_ids["page"]:
-                        assessment_ids_pages = assessment_ids["page"]["totalPages"]
+                # At first iteration, get the total number of pages
+                if page_flipper == 0:
+                    if "page" in assessment_ids:
+                        if "totalPages" in assessment_ids["page"]:
+                            assessment_ids_pages = assessment_ids["page"]["totalPages"]
 
                 for assessment in assessment_ids["content"]:
+                    assessment["tenantHostname"] = base_url
+                    assessment["apiPage"] = page_flipper
+                    assessment["apiScriptHost"] = apiScriptHost
                     asId = Event()
                     asId.stanza = self.input_name
                     asId.sourceType  = "onetrust:assessmentId"
                     asId.data = json.dumps(assessment)
                     ew.write_event(asId)
+                
+                page_flipper = page_flipper + 1
 
         except Exception as e:
             ew.log("ERROR", "Error streaming events: %s" % str(e))
