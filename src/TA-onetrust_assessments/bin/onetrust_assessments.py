@@ -222,6 +222,8 @@ class OneTrustAssessments(Script):
 
         if base_url[-1] == '/':
             base_url = base_url.rstrip(base_url[-1])
+        
+        ew.log("INFO", f"Streaming events starts where with base_url={base_url}")
 
         try:
             if api_token != self.MASK:
@@ -246,7 +248,8 @@ class OneTrustAssessments(Script):
                     if "page" in assessment_ids:
                         if "totalPages" in assessment_ids["page"]:
                             assessment_ids_pages = assessment_ids["page"]["totalPages"]
-
+                            
+                # Streaming all Assessemtn Summaries first
                 for assessmentItem in assessment_ids["content"]:
                     assessmentItem["tenantHostname"] = base_url
                     assessmentItem["apiPage"] = page_flipper
@@ -256,22 +259,19 @@ class OneTrustAssessments(Script):
                     assessmentSummary.sourceType  = "onetrust:assessment:summary"
                     assessmentSummary.data = json.dumps(assessmentItem)
                     ew.write_event(assessmentSummary)
-                    
-                # Start Testing Assessment Details #
                 
-                sampleAssID = assessment_ids["content"][0]["assessmentId"]
-                
-                fullAssDetail = self.get_assessment_details(ew, base_url, api_token, sampleAssID)
-                
-                trimmedAssDetail = self.assessment_json_bldr(ew, fullAssDetail)
-                
-                assessmentDetails = Event()
-                assessmentDetails.stanza = self.input_name
-                assessmentDetails.sourceType  = "onetrust:assessment:details"
-                assessmentDetails.data = json.dumps(trimmedAssDetail)
-                ew.write_event(assessmentDetails)
-                
-                # End Testing Assessment Details #
+                # Another round of looping the assessment_ids for Assessment Details
+                for assessmentItem in assessment_ids["content"]:
+                    assessmentId = assessmentItem["assessmentId"]
+                    fullAssDetail = self.get_assessment_details(ew, base_url, api_token, assessmentId)
+                    trimmedAssDetail = self.assessment_json_bldr(ew, fullAssDetail)
+                    trimmedAssDetail["tenantHostname"] = base_url
+                    trimmedAssDetail["apiScriptHost"] = apiScriptHost
+                    assessmentDetails = Event()
+                    assessmentDetails.stanza = self.input_name
+                    assessmentDetails.sourceType  = "onetrust:assessment:details"
+                    assessmentDetails.data = json.dumps(trimmedAssDetail)
+                    ew.write_event(assessmentDetails)
                 
                 page_flipper += 1
 
