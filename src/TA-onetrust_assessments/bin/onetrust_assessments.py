@@ -110,7 +110,6 @@ class OneTrustAssessments(Script):
 
     def get_assessment_details(self, ew, _base_url, _api_token, _assessmentId):
         
-        url = f"{_base_url}/api/assessment/v2/assessments/assessment-results"
         url = f"{_base_url}/api/assessment/v2/assessments/{_assessmentId}/export?ExcludeSkippedQuestions=true"
 
         headers = {
@@ -133,83 +132,83 @@ class OneTrustAssessments(Script):
     def assessment_json_bldr(self, ew, _data):
         assessmentJsonRetVal = {}
 
-        assessmentJsonRetVal['assessmentId'] = NO_JSON_DATA
-        if 'assessmentId' in data:
-            assessmentJsonRetVal['assessmentId'] = data['assessmentId']
+        assessmentJsonRetVal['assessmentId'] = self.NO_JSON_DATA
+        if 'assessmentId' in _data:
+            assessmentJsonRetVal['assessmentId'] = _data['assessmentId']
 
-        assessmentJsonRetVal['assessmentNumber'] = NO_JSON_DATA
-        if 'assessmentNumber' in data:
-            assessmentJsonRetVal['assessmentNumber'] = data['assessmentNumber']
+        assessmentJsonRetVal['assessmentNumber'] = self.NO_JSON_DATA
+        if 'assessmentNumber' in _data:
+            assessmentJsonRetVal['assessmentNumber'] = _data['assessmentNumber']
 
-        assessmentJsonRetVal['lastUpdated'] = NO_JSON_DATA
-        if 'lastUpdated' in data:
-            assessmentJsonRetVal['lastUpdated'] = data['lastUpdated']
+        assessmentJsonRetVal['lastUpdated'] = self.NO_JSON_DATA
+        if 'lastUpdated' in _data:
+            assessmentJsonRetVal['lastUpdated'] = _data['lastUpdated']
 
-        assessmentJsonRetVal['submittedOn'] = NO_JSON_DATA
-        if 'lastUpdated' in data:
-            assessmentJsonRetVal['submittedOn'] = data['submittedOn']
+        assessmentJsonRetVal['submittedOn'] = self.NO_JSON_DATA
+        if 'lastUpdated' in _data:
+            assessmentJsonRetVal['submittedOn'] = _data['submittedOn']
 
-        assessmentJsonRetVal['completedOn'] = NO_JSON_DATA
-        if 'completedOn' in data:
-            assessmentJsonRetVal['completedOn'] = data['completedOn']
+        assessmentJsonRetVal['completedOn'] = self.NO_JSON_DATA
+        if 'completedOn' in _data:
+            assessmentJsonRetVal['completedOn'] = _data['completedOn']
 
-        assessmentJsonRetVal['createdDT'] = NO_JSON_DATA
-        if 'createdDT' in data:
-            assessmentJsonRetVal['createdDT'] = data['createdDT']
+        assessmentJsonRetVal['createdDT'] = self.NO_JSON_DATA
+        if 'createdDT' in _data:
+            assessmentJsonRetVal['createdDT'] = _data['createdDT']
 
-        assessmentJsonRetVal['template'] = NO_JSON_DATA
-        if 'template' in data:
-            if 'name' in data['template']:
-                assessmentJsonRetVal['template'] = data['template']['name']
+        assessmentJsonRetVal['template'] = self.NO_JSON_DATA
+        if 'template' in _data:
+            if 'name' in _data['template']:
+                assessmentJsonRetVal['template'] = _data['template']['name']
 
-        assessmentJsonRetVal['title'] = NO_JSON_DATA
-        if 'name' in data:
-            assessmentJsonRetVal['title'] = data['name']
+        assessmentJsonRetVal['title'] = self.NO_JSON_DATA
+        if 'name' in _data:
+            assessmentJsonRetVal['title'] = _data['name']
 
-        assessmentJsonRetVal['orgGroup'] = NO_JSON_DATA
-        if 'orgGroup' in data:
-            if 'name' in data['orgGroup']:
-                assessmentJsonRetVal['orgGroup'] = data['orgGroup']['name']
+        assessmentJsonRetVal['orgGroup'] = self.NO_JSON_DATA
+        if 'orgGroup' in _data:
+            if 'name' in _data['orgGroup']:
+                assessmentJsonRetVal['orgGroup'] = _data['orgGroup']['name']
 
-        assessmentJsonRetVal['createdBy'] = NO_JSON_DATA
-        if 'createdBy' in data:
-            if 'name' in data['createdBy']:
-                assessmentJsonRetVal['createdBy'] = data['createdBy']['name']
+        assessmentJsonRetVal['createdBy'] = self.NO_JSON_DATA
+        if 'createdBy' in _data:
+            if 'name' in _data['createdBy']:
+                assessmentJsonRetVal['createdBy'] = _data['createdBy']['name']
 
-        assessmentJsonRetVal['responseTitle'] = NO_JSON_DATA
-        if 'sections' in data:
-            if 'questions' in data['sections'][0]:
-                for question in data['sections'][0]['questions']:
+        assessmentJsonRetVal['responseTitle'] = self.NO_JSON_DATA
+        if 'sections' in _data:
+            if 'questions' in _data['sections'][0]:
+                for question in _data['sections'][0]['questions']:
                     if 'content' in question['question']:
                         if question['question']['content'] == 'Please provide a request title':
                             assessmentJsonRetVal['responseTitle'] = question['questionResponses'][0]['responses'][0]['response']
                             break
 
         assessmentJsonRetVal['approvalInfo'] = []
-        if 'approvers' in data:
-            for approvers in data['approvers']:
+        if 'approvers' in _data:
+            for approvers in _data['approvers']:
                 assessmentJsonRetVal['approvalInfo'].append({
                     "approvers": approvers['approver']['fullName'], 
                     "approvedOn": approvers['approvedOn'], 
                     "approverResult": approvers['resultName']
                     })
 
-        assessmentJsonRetVal['respondent'] = NO_JSON_DATA
-        if 'respondent' in data:
-            if 'name' in data['respondent']:
-                assessmentJsonRetVal['respondent'] = data['respondent']['name']
+        assessmentJsonRetVal['respondent'] = self.NO_JSON_DATA
+        if 'respondent' in _data:
+            if 'name' in _data['respondent']:
+                assessmentJsonRetVal['respondent'] = _data['respondent']['name']
 
-        assessmentJsonRetVal['status'] = NO_JSON_DATA
-        if 'status' in data:
-            assessmentJsonRetVal['status'] = data['status']
+        assessmentJsonRetVal['status'] = self.NO_JSON_DATA
+        if 'status' in _data:
+            assessmentJsonRetVal['status'] = _data['status']
 
-        assessmentJsonRetVal['result'] = NO_JSON_DATA
-        if 'result' in data:
-            assessmentJsonRetVal['result'] = data['result']
+        assessmentJsonRetVal['result'] = self.NO_JSON_DATA
+        if 'result' in _data:
+            assessmentJsonRetVal['result'] = _data['result']
 
-        assessmentJsonRetVal['riskLevel'] = NO_JSON_DATA
-        if 'residualRiskScore' in data:
-            assessmentJsonRetVal['riskLevel'] = data['residualRiskScore']
+        assessmentJsonRetVal['riskLevel'] = self.NO_JSON_DATA
+        if 'residualRiskScore' in _data:
+            assessmentJsonRetVal['riskLevel'] = _data['residualRiskScore']
         
         return assessmentJsonRetVal
 
@@ -233,7 +232,7 @@ class OneTrustAssessments(Script):
             self.CREDENTIALS = json.loads(decrypted)
             api_token = self.CREDENTIALS["apiToken"]
 
-            # Assumed there at least 1 page
+            # Assumes there at least 1 page
             assessment_ids_pages = 1
             page_flipper = 0
             apiScriptHost = socket.gethostname()
@@ -248,17 +247,33 @@ class OneTrustAssessments(Script):
                         if "totalPages" in assessment_ids["page"]:
                             assessment_ids_pages = assessment_ids["page"]["totalPages"]
 
-                for assessment in assessment_ids["content"]:
-                    assessment["tenantHostname"] = base_url
-                    assessment["apiPage"] = page_flipper
-                    assessment["apiScriptHost"] = apiScriptHost
-                    asId = Event()
-                    asId.stanza = self.input_name
-                    asId.sourceType  = "onetrust:assessmentId"
-                    asId.data = json.dumps(assessment)
-                    ew.write_event(asId)
+                for assessmentItem in assessment_ids["content"]:
+                    assessmentItem["tenantHostname"] = base_url
+                    assessmentItem["apiPage"] = page_flipper
+                    assessmentItem["apiScriptHost"] = apiScriptHost
+                    assessmentSummary = Event()
+                    assessmentSummary.stanza = self.input_name
+                    assessmentSummary.sourceType  = "onetrust:assessment:summary"
+                    assessmentSummary.data = json.dumps(assessmentItem)
+                    ew.write_event(assessmentSummary)
+                    
+                # Start Testing Assessment Details #
                 
-                page_flipper = page_flipper + 1
+                sampleAssID = assessment_ids["content"][0]["assessmentId"]
+                
+                fullAssDetail = self.get_assessment_details(ew, base_url, api_token, sampleAssID)
+                
+                trimmedAssDetail = self.assessment_json_bldr(ew, fullAssDetail)
+                
+                assessmentDetails = Event()
+                assessmentDetails.stanza = self.input_name
+                assessmentDetails.sourceType  = "onetrust:assessment:details"
+                assessmentDetails.data = json.dumps(trimmedAssDetail)
+                ew.write_event(assessmentDetails)
+                
+                # End Testing Assessment Details #
+                
+                page_flipper += 1
 
         except Exception as e:
             ew.log("ERROR", "Error streaming events: %s" % str(e))
