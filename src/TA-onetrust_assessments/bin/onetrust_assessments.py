@@ -4,6 +4,7 @@ import sys
 import requests
 import hashlib
 import socket
+import re
 from splunklib.modularinput import *
 import splunklib.client as client
 
@@ -105,7 +106,7 @@ class OneTrustAssessments(Script):
             
             return response.json()
         except Exception as e:
-            ew.log("ERROR", "Error streaming events: %s" % str(e))
+            ew.log("ERROR", "Error retrieving assessment list: %s" % str(e))
             sys.exit(1)
 
     def get_assessment_details(self, ew, _base_url, _api_token, _assessmentId):
@@ -126,7 +127,7 @@ class OneTrustAssessments(Script):
             
             return response.json()
         except Exception as e:
-            ew.log("ERROR", "Error streaming events: %s" % str(e))
+            ew.log("ERROR", "Error retrieving assessment details: %s" % str(e))
             sys.exit(1)
 
     def assessment_json_bldr(self, ew, _data):
@@ -215,6 +216,50 @@ class OneTrustAssessments(Script):
         
         return assessmentJsonRetVal
 
+    def assessment_questions_json_bldr(self, ew, _data):
+        
+        questionsRetVal = {}
+        questionsRetVal['assessmentId'] = _data['assessmentId']
+        questionsRetVal['questionsAndAnswers'] = []
+
+        if "sections" in _data:
+            for section in _data['sections']:
+                if "header" in section:
+                    if "name" in section['header']:
+                        sectionNameContent = section['header']['name']
+                        if re.search("Frequently\sAsked\sQuestions?", sectionNameContent):
+                            continue
+                        questionsRetVal['sectionName'] = sectionNameContent
+                    if "description" in section['header']:
+                        questionsRetVal['description'] = section['header']['description']
+                    if "sequence" in section['header']:
+                        questionsRetVal['sequence'] = section['header']['sequence']
+                if "questions" in section:
+                    for question in section['questions']:
+                        qna = {}
+                        # Question key-val-pair
+                        if "question" in question:
+                            if "content" in question['question']:
+                                qna['question'] = question['question']['content']
+                            if "sequence" in question['question']:
+                                qna['questionSeq'] = question['question']['sequence']
+                                
+                        # Responses key-val-pair (array)
+                        allResponses = []
+                        defaultResponse = "n/a"
+                        if "questionResponses" in question:
+                            for questionResponse in question['questionResponses']:
+                                if "responses" in questionResponse:
+                                    for response in questionResponse['responses']:
+                                        if "response" in response:
+                                            defaultResponse = response['response']
+                        allResponses.append(defaultResponse)
+                        qna['responses'] = allResponses
+                                    
+                        questionsRetVal['questionsAndAnswers'].append(qna)
+                                    
+        return questionsRetVal
+
     def stream_events(self, inputs, ew):
 
         self.input_name, self.input_items = inputs.inputs.popitem()
@@ -280,6 +325,13 @@ class OneTrustAssessments(Script):
                     assessmentDetails.sourceType  = "onetrust:assessment:details"
                     assessmentDetails.data = json.dumps(trimmedAssDetail)
                     ew.write_event(assessmentDetails)
+                    
+                    trimmedAssQnA = self.assessment_questions_json_bldr(ew, fullAssDetail)
+                    assessmentQnA = Event()
+                    assessmentQnA.stanza = self.input_name
+                    assessmentQnA.sourceType  = "onetrust:assessment:qna"
+                    assessmentQnA.data = json.dumps(trimmedAssQnA)
+                    ew.write_event(assessmentQnA)
                 
                 page_flipper += 1
 
