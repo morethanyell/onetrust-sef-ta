@@ -121,7 +121,7 @@ class OneTrustAssessments(Script):
         try:
             response = requests.get(url, headers=headers)
             if response.status_code != 200:
-                ew.log("ERROR", f"request_status_code={str(response.status_code)}. Failed to get total number of pages from {base_url}.")
+                ew.log("ERROR", f"request_status_code={str(response.status_code)}. Failed to retrieve assessment detail of {_assessmentId} from {base_url}.")
                 sys.exit(1)
             
             return response.json()
@@ -177,12 +177,15 @@ class OneTrustAssessments(Script):
 
         assessmentJsonRetVal['responseTitle'] = self.NO_JSON_DATA
         if 'sections' in _data:
-            if 'questions' in _data['sections'][0]:
-                for question in _data['sections'][0]['questions']:
-                    if 'content' in question['question']:
-                        if question['question']['content'] == 'Please provide a request title':
-                            assessmentJsonRetVal['responseTitle'] = question['questionResponses'][0]['responses'][0]['response']
-                            break
+            if len(_data['sections']) > 0:
+                if 'questions' in _data['sections'][0]:
+                    for question in _data['sections'][0]['questions']:
+                        if 'content' in question['question']:
+                            if question['question']['content'] == 'Please provide a request title':
+                                if len(question['questionResponses']) > 0:
+                                    if len(question['questionResponses'][0]['responses']) > 0:
+                                        assessmentJsonRetVal['responseTitle'] = question['questionResponses'][0]['responses'][0]['response']
+                                        break
 
         assessmentJsonRetVal['approvalInfo'] = []
         if 'approvers' in _data:
@@ -248,7 +251,10 @@ class OneTrustAssessments(Script):
                     if "page" in assessment_ids:
                         if "totalPages" in assessment_ids["page"]:
                             assessment_ids_pages = assessment_ids["page"]["totalPages"]
-                            
+                
+                if "content" not in assessment_ids:
+                    continue
+                
                 # Streaming all Assessemtn Summaries first
                 for assessmentItem in assessment_ids["content"]:
                     assessmentItem["tenantHostname"] = base_url
@@ -262,6 +268,8 @@ class OneTrustAssessments(Script):
                 
                 # Another round of looping the assessment_ids for Assessment Details
                 for assessmentItem in assessment_ids["content"]:
+                    if "assessmentId" not in assessmentItem:
+                        continue
                     assessmentId = assessmentItem["assessmentId"]
                     fullAssDetail = self.get_assessment_details(ew, base_url, api_token, assessmentId)
                     trimmedAssDetail = self.assessment_json_bldr(ew, fullAssDetail)
