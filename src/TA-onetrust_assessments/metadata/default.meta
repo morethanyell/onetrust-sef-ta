@@ -32,3 +32,24 @@ export = system
 [viewstates]
 access = read : [ * ], write : [ * ]
 export = system
+
+[collections/onetrust_assessment_questions_collection]
+access = read : [ admin ], write : [ admin ]
+export = system
+owner = admin
+version = 9.0.0
+modtime = 1664998000.000000000
+
+[transforms/onetrust_assessment_questions]
+access = read : [ admin ], write : [ admin ]
+export = system
+owner = admin
+version = 9.0.0
+modtime = 1664998000.000000000
+
+[savedsearches/Onetrust%20-%20Lookup%20Updater%20-%20Assessment%20Questions]
+access = read : [ admin ], write : [ admin ]
+export = system
+owner = admin
+version = 9.0.0
+modtime = 1664998000.000000000
