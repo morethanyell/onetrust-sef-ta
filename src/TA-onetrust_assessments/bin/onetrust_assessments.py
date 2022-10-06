@@ -160,7 +160,7 @@ class OneTrustAssessments(Script):
         assessmentJsonRetVal['template'] = self.NO_JSON_DATA
         if 'template' in _data:
             if 'name' in _data['template']:
-                assessmentJsonRetVal['template'] = _data['template']['name']
+                assessmentJsonRetVal['templateName'] = _data['template']['name']
 
         assessmentJsonRetVal['title'] = self.NO_JSON_DATA
         if 'name' in _data:
@@ -331,11 +331,11 @@ class OneTrustAssessments(Script):
                     if "lastUpdated" in assessmentItem:
                         assLastUpdated = assessmentItem["lastUpdated"]
                     assTemplate = "n/a"
-                    if "template" in assessmentItem:
-                        assTemplate = assessmentItem["template"]
+                    if "templateName" in assessmentItem:
+                        assTemplate = assessmentItem["templateName"]
                     trimmedAssQnA = self.assessment_questions_json_bldr(ew, fullAssDetail)
                     trimmedAssQnA["lastUpdated"] = assLastUpdated
-                    trimmedAssQnA["template"] = assTemplate
+                    trimmedAssQnA["templateName"] = assTemplate
                     assessmentQnA = Event()
                     assessmentQnA.stanza = self.input_name
                     assessmentQnA.sourceType  = "onetrust:assessment:qna"
