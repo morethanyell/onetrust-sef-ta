@@ -90,7 +90,7 @@ class OneTrustAssessments(Script):
         
         url = f"{_base_url}/api/assessment/v2/assessments?assessmentArchivalState=ALL&size=2000&page={_page}"
 
-        ew.log("INFO", f"Performing API get request on {url}")
+        ew.log("INFO", f"OneTrust API Call: GET {url}")
 
         headers = {
             "Accept": "application/json",
@@ -101,7 +101,7 @@ class OneTrustAssessments(Script):
         try:
             response = requests.get(url, headers=headers)
             if response.status_code != 200:
-                ew.log("ERROR", f"request_status_code={str(response.status_code)}. Failed to get total number of pages from {base_url}.")
+                ew.log("ERROR", f"API call returned request_status_code={str(response.status_code)}. Failed to retrieve Assessment Summary from {_base_url}.")
                 sys.exit(1)
             
             return response.json()
@@ -122,7 +122,7 @@ class OneTrustAssessments(Script):
         try:
             response = requests.get(url, headers=headers)
             if response.status_code != 200:
-                ew.log("ERROR", f"request_status_code={str(response.status_code)}. Failed to retrieve assessment detail of {_assessmentId} from {base_url}.")
+                ew.log("ERROR", f"API call returned request_status_code={str(response.status_code)}. Failed to retrieve assessment detail of {_assessmentId} from {_base_url}.")
                 sys.exit(1)
             
             return response.json()
@@ -271,7 +271,7 @@ class OneTrustAssessments(Script):
         if base_url[-1] == '/':
             base_url = base_url.rstrip(base_url[-1])
         
-        ew.log("INFO", f"Streaming events starts where with base_url={base_url}")
+        ew.log("INFO", f"Streaming OneTrust Assessment Summary, Details, and Questions and Responses from base_url={base_url}")
 
         try:
             if api_token != self.MASK:
