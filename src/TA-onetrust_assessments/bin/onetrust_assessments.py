@@ -326,7 +326,16 @@ class OneTrustAssessments(Script):
                     assessmentDetails.data = json.dumps(trimmedAssDetail)
                     ew.write_event(assessmentDetails)
                     
+                    # Streaming Question and Responses
+                    assLastUpdated = "n/a"
+                    if "lastUpdated" in assessmentItem:
+                        assLastUpdated = assessmentItem["lastUpdated"]
+                    assTemplate = "n/a"
+                    if "template" in assessmentItem:
+                        assTemplate = assessmentItem["template"]
                     trimmedAssQnA = self.assessment_questions_json_bldr(ew, fullAssDetail)
+                    trimmedAssQnA["lastUpdated"] = assLastUpdated
+                    trimmedAssQnA["template"] = assTemplate
                     assessmentQnA = Event()
                     assessmentQnA.stanza = self.input_name
                     assessmentQnA.sourceType  = "onetrust:assessment:qna"
