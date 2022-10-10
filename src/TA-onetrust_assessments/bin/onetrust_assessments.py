@@ -354,7 +354,7 @@ class OneTrustAssessments(Script):
             
         end = time.time()
         elapsed = round((end - start) * 1000, 2)
-        ew.log("INFO", f"Streaming OneTrust Assessment Summary and Details has been successful / completed in {str(elapsed)} ms."
+        ew.log("INFO", f"Streaming OneTrust Assessment Summary and Details has been successful / completed in {str(elapsed)} ms.")
 
 if __name__ == "__main__":
     sys.exit(OneTrustAssessments().run(sys.argv))
