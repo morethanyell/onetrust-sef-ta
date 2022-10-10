@@ -5,6 +5,7 @@ import requests
 import hashlib
 import socket
 import re
+import time
 from splunklib.modularinput import *
 import splunklib.client as client
 
@@ -66,7 +67,7 @@ class OneTrustAssessments(Script):
         for storage_password in service.storage_passwords:
             if storage_password.username == _base_url:
                 return storage_password.content.clear_password
-    
+
     def mask_credentials(self, _base_url, _api_token, _input_name, _session_key):
 
         try:
@@ -261,6 +262,8 @@ class OneTrustAssessments(Script):
         return questionsRetVal
 
     def stream_events(self, inputs, ew):
+        
+        start = time.time()
 
         self.input_name, self.input_items = inputs.inputs.popitem()
         session_key = self._input_definition.metadata["session_key"]
@@ -287,6 +290,8 @@ class OneTrustAssessments(Script):
             page_flipper = 0
             apiScriptHost = socket.gethostname()
 
+            ew.log("INFO", f"API credentials retrieved.")
+
             while page_flipper < assessment_ids_pages:
 
                 assessment_ids = self.get_assessment_list(ew, base_url, api_token, page_flipper)
@@ -310,7 +315,7 @@ class OneTrustAssessments(Script):
                     assessmentSummary.sourceType  = "onetrust:assessment:summary"
                     assessmentSummary.data = json.dumps(assessmentItem)
                     ew.write_event(assessmentSummary)
-                
+
                 # Another round of looping the assessment_ids for Assessment Details
                 for assessmentItem in assessment_ids["content"]:
                     if "assessmentId" not in assessmentItem:
@@ -347,6 +352,9 @@ class OneTrustAssessments(Script):
         except Exception as e:
             ew.log("ERROR", "Error streaming events: %s" % str(e))
             
+        end = time.time()
+        elapsed = round((end - start) * 1000, 2)
+        ew.log("INFO", f"Streaming OneTrust Assessment Summary and Details has been successful / completed in {str(elapsed)} ms."
 
 if __name__ == "__main__":
     sys.exit(OneTrustAssessments().run(sys.argv))
