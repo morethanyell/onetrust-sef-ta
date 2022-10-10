@@ -253,7 +253,7 @@ class OneTrustAssessments(Script):
                                     for response in questionResponse['responses']:
                                         if "response" in response:
                                             defaultResponse = response['response']
-                        allResponses.append(defaultResponse)
+                                            allResponses.append(defaultResponse)
                         qna['responses'] = allResponses
                                     
                         questionsRetVal['questionsAndAnswers'].append(qna)
