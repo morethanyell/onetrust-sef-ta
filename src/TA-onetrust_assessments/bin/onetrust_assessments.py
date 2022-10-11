@@ -291,22 +291,25 @@ class OneTrustAssessments(Script):
             apiScriptHost = socket.gethostname()
 
             ew.log("INFO", f"API credentials retrieved.")
+            
+            all_assessments = {}
+            all_assessments['content'] = []
 
             while page_flipper < assessment_ids_pages:
 
-                assessment_ids = self.get_assessment_list(ew, base_url, api_token, page_flipper)
+                assessment_ids_curpage = self.get_assessment_list(ew, base_url, api_token, page_flipper)
 
                 # At first iteration, get the total number of pages
                 if page_flipper == 0:
-                    if "page" in assessment_ids:
-                        if "totalPages" in assessment_ids["page"]:
-                            assessment_ids_pages = assessment_ids["page"]["totalPages"]
+                    if "page" in assessment_ids_curpage:
+                        if "totalPages" in assessment_ids_curpage["page"]:
+                            assessment_ids_curpage = assessment_ids_curpage["page"]["totalPages"]
                 
-                if "content" not in assessment_ids:
+                if "content" not in assessment_ids_curpage:
                     continue
                 
-                # Streaming all Assessemtn Summaries first
-                for assessmentItem in assessment_ids["content"]:
+                # Streaming all Assessment Summaries first
+                for assessmentItem in assessment_ids_curpage["content"]:
                     assessmentItem["tenantHostname"] = base_url
                     assessmentItem["apiPage"] = page_flipper
                     assessmentItem["apiScriptHost"] = apiScriptHost
@@ -315,39 +318,41 @@ class OneTrustAssessments(Script):
                     assessmentSummary.sourceType  = "onetrust:assessment:summary"
                     assessmentSummary.data = json.dumps(assessmentItem)
                     ew.write_event(assessmentSummary)
-
-                # Another round of looping the assessment_ids for Assessment Details
-                for assessmentItem in assessment_ids["content"]:
-                    if "assessmentId" not in assessmentItem:
-                        continue
-                    assessmentId = assessmentItem["assessmentId"]
-                    fullAssDetail = self.get_assessment_details(ew, base_url, api_token, assessmentId)
-                    trimmedAssDetail = self.assessment_json_bldr(ew, fullAssDetail)
-                    trimmedAssDetail["tenantHostname"] = base_url
-                    trimmedAssDetail["apiScriptHost"] = apiScriptHost
-                    assessmentDetails = Event()
-                    assessmentDetails.stanza = self.input_name
-                    assessmentDetails.sourceType  = "onetrust:assessment:details"
-                    assessmentDetails.data = json.dumps(trimmedAssDetail)
-                    ew.write_event(assessmentDetails)
-                    
-                    # Streaming Question and Responses
-                    assLastUpdated = "n/a"
-                    if "lastUpdated" in assessmentItem:
-                        assLastUpdated = assessmentItem["lastUpdated"]
-                    assTemplate = "n/a"
-                    if "templateName" in assessmentItem:
-                        assTemplate = assessmentItem["templateName"]
-                    trimmedAssQnA = self.assessment_questions_json_bldr(ew, fullAssDetail)
-                    trimmedAssQnA["lastUpdated"] = assLastUpdated
-                    trimmedAssQnA["templateName"] = assTemplate
-                    assessmentQnA = Event()
-                    assessmentQnA.stanza = self.input_name
-                    assessmentQnA.sourceType  = "onetrust:assessment:qna"
-                    assessmentQnA.data = json.dumps(trimmedAssQnA)
-                    ew.write_event(assessmentQnA)
+                    all_assessments['content'].append(assessmentItem)
                 
                 page_flipper += 1
+                
+            
+            # Another round of looping the assessment_ids for Assessment Details
+            for assessment in all_assessments["content"]:
+                if "assessmentId" not in assessmentItem:
+                    continue
+                assessmentId = assessmentItem["assessmentId"]
+                fullAssDetail = self.get_assessment_details(ew, base_url, api_token, assessmentId)
+                trimmedAssDetail = self.assessment_json_bldr(ew, fullAssDetail)
+                trimmedAssDetail["tenantHostname"] = base_url
+                trimmedAssDetail["apiScriptHost"] = apiScriptHost
+                assessmentDetails = Event()
+                assessmentDetails.stanza = self.input_name
+                assessmentDetails.sourceType  = "onetrust:assessment:details"
+                assessmentDetails.data = json.dumps(trimmedAssDetail)
+                ew.write_event(assessmentDetails)
+                
+                # Streaming Question and Responses
+                assLastUpdated = "n/a"
+                if "lastUpdated" in assessmentItem:
+                    assLastUpdated = assessmentItem["lastUpdated"]
+                assTemplate = "n/a"
+                if "templateName" in assessmentItem:
+                    assTemplate = assessmentItem["templateName"]
+                trimmedAssQnA = self.assessment_questions_json_bldr(ew, fullAssDetail)
+                trimmedAssQnA["lastUpdated"] = assLastUpdated
+                trimmedAssQnA["templateName"] = assTemplate
+                assessmentQnA = Event()
+                assessmentQnA.stanza = self.input_name
+                assessmentQnA.sourceType  = "onetrust:assessment:qna"
+                assessmentQnA.data = json.dumps(trimmedAssQnA)
+                ew.write_event(assessmentQnA)
 
         except Exception as e:
             ew.log("ERROR", "Error streaming events: %s" % str(e))
