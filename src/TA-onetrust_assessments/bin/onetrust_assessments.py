@@ -284,9 +284,10 @@ class OneTrustAssessments(Script):
         self.input_name, self.input_items = inputs.inputs.popitem()
         session_key = self._input_definition.metadata["session_key"]
 
-        base_url = self.input_items["base_url"]
-        api_token = self.input_items["api_token"]
-        archival_state = str(self.input_items["assessment_archival_state"]).trim()
+        base_url = str(self.input_items["base_url"]).strip()
+        api_token = str(self.input_items["api_token"]).strip()
+        archival_state = str(self.input_items["assessment_archival_state"]).strip()
+        test_mode = 0
         test_mode = self.input_items["test_mode"]
 
         if base_url[-1] == '/':
@@ -301,7 +302,7 @@ class OneTrustAssessments(Script):
 
             decrypted = self.decrypt_keys(base_url, session_key)
             self.CREDENTIALS = json.loads(decrypted)
-            api_token = self.CREDENTIALS["apiToken"]
+            api_token = str(self.CREDENTIALS["apiToken"]).strip()
 
             # Assumes there at least 1 page
             assessment_ids_pages = 1
@@ -318,13 +319,14 @@ class OneTrustAssessments(Script):
                 assessment_ids_curpage = self.get_assessment_list(ew, base_url, api_token, archival_state, page_flipper)
 
                 # At first iteration, get the total number of pages
-                totalPages = 0
                 if page_flipper == 0:
                     if "page" in assessment_ids_curpage:
                         if "totalPages" in assessment_ids_curpage["page"]:
-                            totalPages = assessment_ids_curpage["page"]["totalPages"]
-                
-                assessment_ids_pages = 1 if int(test_mode) == 1 else totalPages
+                            assessment_ids_pages = assessment_ids_curpage["page"]["totalPages"]
+                            
+                if int(test_mode) == 1:
+                    ew.log("INFO", f"Test mode is enabled, so the collector will only perform GET call for page {page_flipper} and will not consume all {assessment_ids_pages} pages for Assessment Summary. Collection of Assessment Details and Questions/Anxwers will also be skipped.")
+                    assessment_ids_pages = 1
                 
                 if "content" not in assessment_ids_curpage:
                     continue
@@ -342,38 +344,38 @@ class OneTrustAssessments(Script):
                     all_assessments["content"].append(assessmentItem)
                 
                 page_flipper += 1
-                
             
-            # Another round of looping the assessment_ids for Assessment Details
-            for assessment in all_assessments["content"]:
-                if "assessmentId" not in assessmentItem:
-                    continue
-                assessmentId = assessmentItem["assessmentId"]
-                fullAssDetail = self.get_assessment_details(ew, base_url, api_token, assessmentId)
-                trimmedAssDetail = self.assessment_json_bldr(ew, fullAssDetail)
-                trimmedAssDetail["tenantHostname"] = base_url
-                trimmedAssDetail["apiScriptHost"] = apiScriptHost
-                assessmentDetails = Event()
-                assessmentDetails.stanza = self.input_name
-                assessmentDetails.sourceType  = "onetrust:assessment:details"
-                assessmentDetails.data = json.dumps(trimmedAssDetail)
-                ew.write_event(assessmentDetails)
-                
-                # Streaming Question and Responses
-                assLastUpdated = "n/a"
-                if "lastUpdated" in assessmentItem:
-                    assLastUpdated = assessmentItem["lastUpdated"]
-                assTemplate = "n/a"
-                if "templateName" in assessmentItem:
-                    assTemplate = assessmentItem["templateName"]
-                trimmedAssQnA = self.assessment_questions_json_bldr(ew, fullAssDetail)
-                trimmedAssQnA["lastUpdated"] = assLastUpdated
-                trimmedAssQnA["templateName"] = assTemplate
-                assessmentQnA = Event()
-                assessmentQnA.stanza = self.input_name
-                assessmentQnA.sourceType  = "onetrust:assessment:qna"
-                assessmentQnA.data = json.dumps(trimmedAssQnA)
-                ew.write_event(assessmentQnA)
+            if int(test_mode) == 0:
+                # Another round of looping the assessment_ids for Assessment Details
+                for assessment in all_assessments["content"]:
+                    if "assessmentId" not in assessmentItem:
+                        continue
+                    assessmentId = assessmentItem["assessmentId"]
+                    fullAssDetail = self.get_assessment_details(ew, base_url, api_token, assessmentId)
+                    trimmedAssDetail = self.assessment_json_bldr(ew, fullAssDetail)
+                    trimmedAssDetail["tenantHostname"] = base_url
+                    trimmedAssDetail["apiScriptHost"] = apiScriptHost
+                    assessmentDetails = Event()
+                    assessmentDetails.stanza = self.input_name
+                    assessmentDetails.sourceType  = "onetrust:assessment:details"
+                    assessmentDetails.data = json.dumps(trimmedAssDetail)
+                    ew.write_event(assessmentDetails)
+                    
+                    # Streaming Question and Responses
+                    assLastUpdated = "n/a"
+                    if "lastUpdated" in assessmentItem:
+                        assLastUpdated = assessmentItem["lastUpdated"]
+                    assTemplate = "n/a"
+                    if "templateName" in assessmentItem:
+                        assTemplate = assessmentItem["templateName"]
+                    trimmedAssQnA = self.assessment_questions_json_bldr(ew, fullAssDetail)
+                    trimmedAssQnA["lastUpdated"] = assLastUpdated
+                    trimmedAssQnA["templateName"] = assTemplate
+                    assessmentQnA = Event()
+                    assessmentQnA.stanza = self.input_name
+                    assessmentQnA.sourceType  = "onetrust:assessment:qna"
+                    assessmentQnA.data = json.dumps(trimmedAssQnA)
+                    ew.write_event(assessmentQnA)
 
         except Exception as e:
             ew.log("ERROR", "Error streaming events: %s" % str(e))
