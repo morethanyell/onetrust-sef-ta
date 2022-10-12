@@ -286,7 +286,7 @@ class OneTrustAssessments(Script):
 
         base_url = self.input_items["base_url"]
         api_token = self.input_items["api_token"]
-        archival_state = self.input_items["assessment_archival_state"]
+        archival_state = str(self.input_items["assessment_archival_state"]).trim()
         test_mode = self.input_items["test_mode"]
 
         if base_url[-1] == '/':
@@ -318,10 +318,13 @@ class OneTrustAssessments(Script):
                 assessment_ids_curpage = self.get_assessment_list(ew, base_url, api_token, archival_state, page_flipper)
 
                 # At first iteration, get the total number of pages
+                totalPages = 0
                 if page_flipper == 0:
                     if "page" in assessment_ids_curpage:
                         if "totalPages" in assessment_ids_curpage["page"]:
-                            assessment_ids_curpage = assessment_ids_curpage["page"]["totalPages"]
+                            totalPages = assessment_ids_curpage["page"]["totalPages"]
+                
+                assessment_ids_pages = 1 if int(test_mode) == 1 else totalPages
                 
                 if "content" not in assessment_ids_curpage:
                     continue
