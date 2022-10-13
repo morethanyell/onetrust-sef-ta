@@ -123,7 +123,7 @@ class OneTrustAssessments(Script):
             
             return response.json()
         except Exception as e:
-            ew.log("ERROR", "Error retrieving assessment list: %s" % str(e))
+            ew.log("ERROR", f"Error retrieving 2000 Assessment IDs from page={str(_page)}. err_msg=\"{str(e)}\"")
             sys.exit(1)
 
     def get_assessment_details(self, ew, _base_url, _api_token, _assessmentId):
@@ -144,8 +144,8 @@ class OneTrustAssessments(Script):
             else:
                 return response.json()
         except Exception as e:
-            ew.log("ERROR", "Error retrieving assessment details: %s" % str(e))
-            sys.exit(1)
+            ew.log("ERROR", f"Error retrieving Assessment detail of {_assessmentId}. err_msg=\"{str(e)}\"")
+            return None
 
     def assessment_json_bldr(self, ew, _data):
         assessmentJsonRetVal = {}
@@ -347,7 +347,9 @@ class OneTrustAssessments(Script):
             
             if int(test_mode) == 0:
                 
-                ew.log("INFO", f"Test mode is disabled, so the collector will loop through all Assessment IDs to collect Assessment Details. Total API call expected: {str(len(all_assessments["content"]))}")
+                totalAssessments = len(all_assessments["content"]) if "content" in all_assessments and all_assessments is not None else 0
+                
+                ew.log("INFO", f"Test mode is disabled, so the collector will loop through all Assessment IDs to collect Assessment Details. Total API call expected: {str(totalAssessments)}")
                 
                 # Another round of looping the assessment_ids for Assessment Details
                 for assessment in all_assessments["content"]:
@@ -383,7 +385,7 @@ class OneTrustAssessments(Script):
                     ew.write_event(assessmentQnA)
 
         except Exception as e:
-            ew.log("ERROR", "Error streaming events: %s" % str(e))
+            ew.log("ERROR", f"Error streaming events: err_msg=\"{str(e)}\"")
             
         end = time.time()
         elapsed = round((end - start) * 1000, 2)
