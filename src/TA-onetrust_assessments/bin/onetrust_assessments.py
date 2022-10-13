@@ -325,7 +325,7 @@ class OneTrustAssessments(Script):
                             assessment_ids_pages = assessment_ids_curpage["page"]["totalPages"]
                             
                 if int(test_mode) == 1:
-                    ew.log("INFO", f"Test mode is enabled, so the collector will only perform GET call for page {page_flipper} and will not consume all {assessment_ids_pages} pages for Assessment Summary. Collection of Assessment Details and Questions/Anxwers will also be skipped.")
+                    ew.log("INFO", f"Test mode is enabled, so the collector will only perform GET call for page {page_flipper} and will not consume all {assessment_ids_pages} pages for Assessment Summary. Collection of Assessment Details and Questions/Answers will also be skipped.")
                     assessment_ids_pages = 1
                 
                 if "content" not in assessment_ids_curpage:
