@@ -139,10 +139,10 @@ class OneTrustAssessments(Script):
         try:
             response = requests.get(url, headers=headers)
             if response.status_code != 200:
-                ew.log("ERROR", f"API call returned request_status_code={str(response.status_code)}. Failed to retrieve assessment detail of {_assessmentId} from {_base_url}.")
-                sys.exit(1)
-            
-            return response.json()
+                ew.log("ERROR", f"API call returned request_status_code={str(response.status_code)}. Failed to retrieve assessment detail of {_assessmentId} from {_base_url}. Moving on to next Assessment ID instead.")
+                return None
+            else:
+                return response.json()
         except Exception as e:
             ew.log("ERROR", "Error retrieving assessment details: %s" % str(e))
             sys.exit(1)
@@ -346,12 +346,17 @@ class OneTrustAssessments(Script):
                 page_flipper += 1
             
             if int(test_mode) == 0:
+                
+                ew.log("INFO", f"Test mode is disabled, so the collector will loop through all Assessment IDs to collect Assessment Details. Total API call expected: {str(len(all_assessments["content"]))}")
+                
                 # Another round of looping the assessment_ids for Assessment Details
                 for assessment in all_assessments["content"]:
-                    if "assessmentId" not in assessmentItem:
+                    if "assessmentId" not in assessment:
                         continue
-                    assessmentId = assessmentItem["assessmentId"]
+                    assessmentId = assessment["assessmentId"]
                     fullAssDetail = self.get_assessment_details(ew, base_url, api_token, assessmentId)
+                    if fullAssDetail is None: 
+                        continue
                     trimmedAssDetail = self.assessment_json_bldr(ew, fullAssDetail)
                     trimmedAssDetail["tenantHostname"] = base_url
                     trimmedAssDetail["apiScriptHost"] = apiScriptHost
@@ -363,11 +368,11 @@ class OneTrustAssessments(Script):
                     
                     # Streaming Question and Responses
                     assLastUpdated = "n/a"
-                    if "lastUpdated" in assessmentItem:
-                        assLastUpdated = assessmentItem["lastUpdated"]
+                    if "lastUpdated" in assessment:
+                        assLastUpdated = assessment["lastUpdated"]
                     assTemplate = "n/a"
-                    if "templateName" in assessmentItem:
-                        assTemplate = assessmentItem["templateName"]
+                    if "templateName" in assessment:
+                        assTemplate = assessment["templateName"]
                     trimmedAssQnA = self.assessment_questions_json_bldr(ew, fullAssDetail)
                     trimmedAssQnA["lastUpdated"] = assLastUpdated
                     trimmedAssQnA["templateName"] = assTemplate
