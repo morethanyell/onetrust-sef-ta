@@ -25,7 +25,7 @@ class OneTrustAssessments(Script):
         base_url.data_type = Argument.data_type_string
         base_url.description = "E.g. https://customer.my.onetrust.com"
         base_url.required_on_create = True
-        base_url.required_on_edit = True
+        base_url.required_on_edit = False
         scheme.add_argument(base_url)
         
         api_token = Argument("api_token")
@@ -33,8 +33,24 @@ class OneTrustAssessments(Script):
         api_token.data_type = Argument.data_type_string
         api_token.description = "OAuth2 Bearer Token"
         api_token.required_on_create = True
-        api_token.required_on_edit = True
-        scheme.add_argument(api_token) 
+        api_token.required_on_edit = False
+        scheme.add_argument(api_token)
+        
+        assessment_archival_state = Argument("assessment_archival_state")
+        assessment_archival_state.title = "Archival State"
+        assessment_archival_state.data_type = Argument.data_type_string
+        assessment_archival_state.description = "Can only be one of the following: < ALL | ARCHIVED | NON_ARCHIVED > Invalid or misspelled value may result to errors."
+        assessment_archival_state.required_on_create = True
+        assessment_archival_state.required_on_edit = False
+        scheme.add_argument(assessment_archival_state)
+        
+        test_mode = Argument("test_mode")
+        test_mode.title = "Input Test Mode"
+        test_mode.data_type = Argument.data_type_boolean
+        test_mode.description = "When set to True, the script will only collect data based on the first page returned by the API server."
+        test_mode.required_on_create = True
+        test_mode.required_on_edit = False
+        scheme.add_argument(test_mode)
         
         return scheme
     
@@ -87,9 +103,9 @@ class OneTrustAssessments(Script):
         except Exception as e:
             raise Exception("Error updating inputs.conf: %s" % str(e))
     
-    def get_assessment_list(self, ew, _base_url, _api_token, _page):
+    def get_assessment_list(self, ew, _base_url, _api_token, _archival_state, _page):
         
-        url = f"{_base_url}/api/assessment/v2/assessments?assessmentArchivalState=ALL&size=2000&page={_page}"
+        url = f"{_base_url}/api/assessment/v2/assessments?assessmentArchivalState={_archival_state}&size=2000&page={_page}"
 
         ew.log("INFO", f"OneTrust API Call: GET {url}")
 
@@ -268,13 +284,16 @@ class OneTrustAssessments(Script):
         self.input_name, self.input_items = inputs.inputs.popitem()
         session_key = self._input_definition.metadata["session_key"]
 
-        base_url = self.input_items["base_url"]
-        api_token = self.input_items["api_token"]
+        base_url = str(self.input_items["base_url"]).strip()
+        api_token = str(self.input_items["api_token"]).strip()
+        archival_state = str(self.input_items["assessment_archival_state"]).strip()
+        test_mode = 0
+        test_mode = self.input_items["test_mode"]
 
         if base_url[-1] == '/':
             base_url = base_url.rstrip(base_url[-1])
         
-        ew.log("INFO", f"Streaming OneTrust Assessment Summary, Details, and Questions and Responses from base_url={base_url}")
+        ew.log("INFO", f"Streaming OneTrust Assessment Summary, Details, and Questions and Responses from base_url={base_url}. test_mode={str(test_mode)}")
 
         try:
             if api_token != self.MASK:
@@ -283,30 +302,37 @@ class OneTrustAssessments(Script):
 
             decrypted = self.decrypt_keys(base_url, session_key)
             self.CREDENTIALS = json.loads(decrypted)
-            api_token = self.CREDENTIALS["apiToken"]
+            api_token = str(self.CREDENTIALS["apiToken"]).strip()
 
             # Assumes there at least 1 page
             assessment_ids_pages = 1
             page_flipper = 0
             apiScriptHost = socket.gethostname()
 
-            ew.log("INFO", f"API credentials retrieved.")
+            ew.log("INFO", f"API credentials and other parameters retrieved. archival_state={archival_state}")
+            
+            all_assessments = {}
+            all_assessments['content'] = []
 
             while page_flipper < assessment_ids_pages:
 
-                assessment_ids = self.get_assessment_list(ew, base_url, api_token, page_flipper)
+                assessment_ids_curpage = self.get_assessment_list(ew, base_url, api_token, archival_state, page_flipper)
 
                 # At first iteration, get the total number of pages
                 if page_flipper == 0:
-                    if "page" in assessment_ids:
-                        if "totalPages" in assessment_ids["page"]:
-                            assessment_ids_pages = assessment_ids["page"]["totalPages"]
+                    if "page" in assessment_ids_curpage:
+                        if "totalPages" in assessment_ids_curpage["page"]:
+                            assessment_ids_pages = assessment_ids_curpage["page"]["totalPages"]
+                            
+                if int(test_mode) == 1:
+                    ew.log("INFO", f"Test mode is enabled, so the collector will only perform GET call for page {page_flipper} and will not consume all {assessment_ids_pages} pages for Assessment Summary. Collection of Assessment Details and Questions/Anxwers will also be skipped.")
+                    assessment_ids_pages = 1
                 
-                if "content" not in assessment_ids:
+                if "content" not in assessment_ids_curpage:
                     continue
                 
-                # Streaming all Assessemtn Summaries first
-                for assessmentItem in assessment_ids["content"]:
+                # Streaming all Assessment Summaries first
+                for assessmentItem in assessment_ids_curpage["content"]:
                     assessmentItem["tenantHostname"] = base_url
                     assessmentItem["apiPage"] = page_flipper
                     assessmentItem["apiScriptHost"] = apiScriptHost
@@ -315,9 +341,13 @@ class OneTrustAssessments(Script):
                     assessmentSummary.sourceType  = "onetrust:assessment:summary"
                     assessmentSummary.data = json.dumps(assessmentItem)
                     ew.write_event(assessmentSummary)
-
+                    all_assessments["content"].append(assessmentItem)
+                
+                page_flipper += 1
+            
+            if int(test_mode) == 0:
                 # Another round of looping the assessment_ids for Assessment Details
-                for assessmentItem in assessment_ids["content"]:
+                for assessment in all_assessments["content"]:
                     if "assessmentId" not in assessmentItem:
                         continue
                     assessmentId = assessmentItem["assessmentId"]
@@ -346,8 +376,6 @@ class OneTrustAssessments(Script):
                     assessmentQnA.sourceType  = "onetrust:assessment:qna"
                     assessmentQnA.data = json.dumps(trimmedAssQnA)
                     ew.write_event(assessmentQnA)
-                
-                page_flipper += 1
 
         except Exception as e:
             ew.log("ERROR", "Error streaming events: %s" % str(e))
