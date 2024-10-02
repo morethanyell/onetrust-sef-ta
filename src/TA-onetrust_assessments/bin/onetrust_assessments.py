@@ -219,8 +219,8 @@ class OneTrustAssessments(Script):
         
         assessmentJsonRetVal['respondents'] = self.NO_JSON_DATA
         if 'respondents' in _data:
-            if 'name' in _data['respondents']:
-                assessmentJsonRetVal['respondents'] = _data['respondents']['name']
+            respondent_names = [r['name'] for r in _data['respondents']]
+            assessmentJsonRetVal['respondents'] = respondent_names
 
         assessmentJsonRetVal['status'] = self.NO_JSON_DATA
         if 'status' in _data:
