@@ -1,8 +1,6 @@
 import json
-import os
 import sys
 import requests
-import hashlib
 import socket
 import re
 import time
@@ -218,6 +216,11 @@ class OneTrustAssessments(Script):
         if 'respondent' in _data:
             if 'name' in _data['respondent']:
                 assessmentJsonRetVal['respondent'] = _data['respondent']['name']
+        
+        assessmentJsonRetVal['respondents'] = self.NO_JSON_DATA
+        if 'respondents' in _data:
+            respondent_names = [r['name'] for r in _data['respondents']]
+            assessmentJsonRetVal['respondents'] = respondent_names
 
         assessmentJsonRetVal['status'] = self.NO_JSON_DATA
         if 'status' in _data:
